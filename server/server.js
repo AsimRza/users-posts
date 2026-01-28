@@ -50,7 +50,9 @@ app.get("/api/users/:id", (req, res) => {
     return res.status(404).json({ error: "User not found" });
   }
 
-  res.json(user);
+  setTimeout(() => {
+    res.json(user);
+  }, 2000);
 });
 
 app.post("/api/users", (req, res) => {
@@ -92,11 +94,16 @@ app.delete("/api/users/:id", (req, res) => {
   const userIndex = users.findIndex((u) => u.id === userId);
 
   if (userIndex === -1) {
-    return res.status(404).json({ error: "User not found" });
+    setTimeout(() => {
+      return res.status(404).json({ error: "User not found" });
+    }, 2000);
+    return;
   }
 
   const deletedUser = users.splice(userIndex, 1)[0];
-  res.json({ message: "User deleted", user: deletedUser });
+  setTimeout(() => {
+    res.json({ message: "User deleted", user: deletedUser });
+  }, 2000);
 });
 
 // Posts endpoints

@@ -1,6 +1,7 @@
 // DOM Elements
 const elements = {
   editModal: document.getElementById("edit-modal"),
+  editForm: document.getElementById("edit-modal").querySelector("form"),
   editFields: document.getElementById("edit-fields"),
   modalTitle: document.getElementById("modal-title"),
   closeModal: document.querySelector(".close"),
@@ -52,9 +53,9 @@ function openEditModal(type, item) {
 
   if (type === "user") {
     elements.editFields.innerHTML = `
-      <input type="text" id="edit-name" value="${item.name || ""}" placeholder="Name" required>
-      <input type="email" id="edit-email" value="${item.email || ""}" placeholder="Email" required>
-      <input type="number" id="edit-age" value="${item.age || ""}" placeholder="Age">
+      <input type="text" name="edit-name" value="${item.name || ""}" placeholder="Name" required>
+      <input type="email" name="edit-email" value="${item.email || ""}" placeholder="Email" required>
+      <input type="number" name="edit-age" value="${item.age || ""}" placeholder="Age">
     `;
   } else if (type === "post") {
     elements.editFields.innerHTML = `
@@ -76,15 +77,6 @@ function closeModal() {
 }
 
 // Example usage functions
-function openUserEditModal() {
-  const sampleUser = {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    age: 30,
-  };
-  openEditModal("user", sampleUser);
-}
 
 function openPostEditModal() {
   const samplePost = {
@@ -122,10 +114,50 @@ async function fetchUsers() {
   return users;
 }
 
+async function deleteUser(e) {
+  const btn = e.target;
+  let userId = btn.getAttribute("data-user-id");
+  btn.classList.add("loading");
+  fetch(`http://localhost:3000/api/users/${userId}`, {
+    method: "DELETE",
+  })
+    .then(() => {
+      showUsers();
+    })
+    .catch((error) => alert(error.message))
+    .finally(() => btn.classList.remove("loading"));
+}
+
+async function openUserEditModal(e) {
+  const btn = e.target;
+  let userId = btn.getAttribute("data-user-id");
+  btn.classList.add("loading");
+
+  const response = await fetch(
+    `http://localhost:3000/api/users/${userId}`,
+  ).finally(() => btn.classList.remove("loading"));
+  const user = await response.json();
+
+  openEditModal("user", user);
+}
+
+function fillSelect(users) {
+  let select = document.getElementById("post-user-id");
+  select.innerHTML = "";
+  users.forEach((user) => {
+    let option = document.createElement("option");
+    option.value = user.id;
+    option.textContent = `${user.name}`;
+    select.appendChild(option);
+  });
+}
+
 function showUsers() {
   elements.userList.innerHTML = LoadingComponent("Loading users");
   fetchUsers()
     .then((users) => {
+      fillSelect(users);
+
       elements.userList.innerHTML = "";
       users.forEach((user) => {
         elements.userList.innerHTML += `
@@ -135,15 +167,23 @@ function showUsers() {
                 <p><strong>Age:</strong> ${user.age}</p>
                 <p><strong>ID:</strong> ${user.id}</p>
                 <div class="card-actions">
-                  <button class="edit" onclick="openUserEditModal()">
+                  <button class="edit edit-btn" data-user-id="${user.id}" >
                     Edit
                   </button>
-                  <button class="danger">Delete</button>
+                  <button class="danger delete-btn" data-user-id="${user.id}">Delete</button>
                 </div>
               </div>
         `;
       });
+
+      for (let btn of document.querySelectorAll(".edit-btn")) {
+        btn.addEventListener("click", openUserEditModal);
+      }
+      for (let btn of document.querySelectorAll(".delete-btn")) {
+        btn.addEventListener("click", deleteUser);
+      }
     })
+
     .catch(() => {
       elements.userList.innerHTML = ErrorComponent(
         "Error occured fetch users ",
@@ -219,6 +259,42 @@ function submitUserForm(e) {
 }
 
 elements.addUserForm.addEventListener("submit", submitUserForm);
+
+elements.editForm.addEventListener("submit", submitEditModal);
+function submitEditModal(e) {
+  let form = e.target;
+  let submitBtn = form.querySelector("button[type='submit']");
+
+  e.preventDefault();
+  if (currentEditType == "user") {
+    const form = e.target;
+    let name = form.elements["edit-name"].value;
+    let age = form.elements["edit-age"].value;
+    let email = form.elements["edit-email"].value;
+    const newUserData = {
+      name,
+      age,
+      email,
+    };
+
+    submitBtn.classList.add("loading");
+    fetch(`http://localhost:3000/api/users/${currentEditItem.id}`, {
+      method: "PUT",
+      body: JSON.stringify(newUserData),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then(() => {
+        showUsers();
+        closeModal();
+      })
+      .catch((error) => alert(error.message))
+      .finally(() => {
+        submitBtn.classList.remove("loading");
+      });
+  }
+}
 
 document.addEventListener("DOMContentLoaded", function () {
   showUsers();
