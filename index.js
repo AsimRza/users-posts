@@ -1,16 +1,8 @@
+import { deleteRequest, getRequest, postRequest, putRequest } from "./api.js";
+import { ErrorComponent, LoadingComponent } from "./components.js";
+import { elements, setupEventListeners, closeModal } from "./ui.js";
+
 // DOM Elements
-const elements = {
-  editModal: document.getElementById("edit-modal"),
-  editForm: document.getElementById("edit-modal").querySelector("form"),
-  editFields: document.getElementById("edit-fields"),
-  modalTitle: document.getElementById("modal-title"),
-  closeModal: document.querySelector(".close"),
-  cancelEdit: document.getElementById("cancel-edit"),
-  userList: document.querySelector("#users-list"),
-  postList: document.querySelector("#posts-list"),
-  addUserForm: document.querySelector("#add-user-form"),
-  userSubmitBtn: document.querySelector("#user-submit-btn"),
-};
 
 // Global variables
 let currentEditItem = null;
@@ -22,22 +14,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // Event Listeners
-function setupEventListeners() {
-  // Modal
-  if (elements.closeModal) {
-    elements.closeModal.addEventListener("click", closeModal);
-  }
-  if (elements.cancelEdit) {
-    elements.cancelEdit.addEventListener("click", closeModal);
-  }
-
-  // Close modal when clicking outside
-  window.addEventListener("click", function (event) {
-    if (event.target === elements.editModal) {
-      closeModal();
-    }
-  });
-}
 
 // Edit Modal Functions
 function openEditModal(type, item) {
@@ -68,14 +44,6 @@ function openEditModal(type, item) {
   elements.editModal.style.display = "block";
 }
 
-function closeModal() {
-  if (elements.editModal) {
-    elements.editModal.style.display = "none";
-  }
-  currentEditItem = null;
-  currentEditType = null;
-}
-
 // Example usage functions
 
 function openPostEditModal() {
@@ -90,27 +58,8 @@ function openPostEditModal() {
 
 /*---------------------*/
 
-function LoadingComponent(title = "Loading") {
-  return `
-    <div class="loading-container">
-                <p>${title}...</p>
-                <div class="loading-spinner"></div>
-              </div>
-    `;
-}
-
-function ErrorComponent(title = "Error") {
-  return `
-    <div class="error-container">
-      <p class="error">${title}</p>
-      <p>Something went wrong. Please try again.</p>
-    </div>
-  `;
-}
-
 async function fetchUsers() {
-  let response = await fetch("http://localhost:3000/api/users");
-  let users = await response.json();
+  let users = await getRequest("/users");
   return users;
 }
 
@@ -118,13 +67,10 @@ async function deleteUser(e) {
   const btn = e.target;
   let userId = btn.getAttribute("data-user-id");
   btn.classList.add("loading");
-  fetch(`http://localhost:3000/api/users/${userId}`, {
-    method: "DELETE",
-  })
+  deleteRequest(`/users/${userId}`)
     .then(() => {
       showUsers();
     })
-    .catch((error) => alert(error.message))
     .finally(() => btn.classList.remove("loading"));
 }
 
@@ -133,10 +79,9 @@ async function openUserEditModal(e) {
   let userId = btn.getAttribute("data-user-id");
   btn.classList.add("loading");
 
-  const response = await fetch(
-    `http://localhost:3000/api/users/${userId}`,
-  ).finally(() => btn.classList.remove("loading"));
-  const user = await response.json();
+  const user = await getRequest(`/users/${userId}`).finally(() =>
+    btn.classList.remove("loading"),
+  );
 
   openEditModal("user", user);
 }
@@ -192,8 +137,7 @@ function showUsers() {
 }
 
 async function fetchPost() {
-  let response = await fetch("http://localhost:3000/api/posts");
-  let posts = await response.json();
+  let posts = await getRequest("/posts");
   return posts;
 }
 
@@ -228,13 +172,7 @@ function showPost() {
 }
 
 function createUser(user) {
-  return fetch("http://localhost:3000/api/users", {
-    method: "POST",
-    body: JSON.stringify(user),
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  return postRequest("/users", user);
 }
 
 function submitUserForm(e) {
@@ -278,18 +216,14 @@ function submitEditModal(e) {
     };
 
     submitBtn.classList.add("loading");
-    fetch(`http://localhost:3000/api/users/${currentEditItem.id}`, {
-      method: "PUT",
-      body: JSON.stringify(newUserData),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
+    putRequest(`/users/${currentEditItem.id}`, newUserData)
       .then(() => {
         showUsers();
-        closeModal();
+        closeModal(() => {
+          currentEditItem = null;
+          currentEditType = null;
+        });
       })
-      .catch((error) => alert(error.message))
       .finally(() => {
         submitBtn.classList.remove("loading");
       });
